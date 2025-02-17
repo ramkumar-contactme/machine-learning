@@ -1,0 +1,71 @@
+
+services:
+  # Apache Airflow
+  airflow:
+    image: bitnami/airflow:latest
+    ports:
+      - "8082:8082"
+    environment:
+      - AIRFLOW_EXECUTOR=LocalExecutor
+      - AIRFLOW_DATABASE_URL=postgresql://airflow:airflow_password@postgres:5432/airflow
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql://airflow:airflow_password@postgres:5432/airflow
+      - AIRFLOW__CORE__SQL_ALCHEMY_POOL_RECYCLE=3600
+    volumes:
+      - airflow_data:/opt/bitnami/airflow
+    depends_on:
+      - postgres
+
+  # Apache Flink
+  flink:
+    image: apache/flink:latest
+    ports:
+      - "8081:8081"
+    environment:
+      - FLINK_PROPERTIES=jobmanager.rpc.address=flink-jobmanager
+    depends_on:
+      - kafka
+
+  # Apache Spark
+  spark:
+    image: apache/spark:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - SPARK_MASTER=local
+    depends_on:
+      - kafka
+
+  # Kafka
+  kafka:
+    image: wurstmeister/kafka:latest
+    environment:
+      - KAFKA_ADVERTISED_LISTENER=PLAINTEXT://kafka:9093
+      - KAFKA_LISTENER_SECURITY_PROTOCOL=PLAINTEXT
+      - KAFKA_LISTENER_NAMES=PLAINTEXT
+      - KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9093
+      - KAFKA_LISTENER_PORT=9093
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_LISTENER_INTERNAL=PLAINTEXT://0.0.0.0:9092
+    ports:
+      - "9093:9093"
+    depends_on:
+      - zookeeper
+
+  # Zookeeper (Required for Kafka)
+  zookeeper:
+    image: wurstmeister/zookeeper:latest
+    ports:
+      - "2181:2181"
+
+  # PostgreSQL (Required for Airflow)
+  postgres:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow_password
+      - POSTGRES_DB=airflow
+    ports:
+      - "5432:5432"
+
+volumes:
+  airflow_data:
